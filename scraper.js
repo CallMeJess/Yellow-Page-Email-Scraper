@@ -27,11 +27,11 @@ var build = {
 var host = {
     url: 'http://yellowpages.ca',
     area: [
-        '/calgary' // City name
+        'calgary' // City name
     ],
     keyword: 'plumbing', // Desired category
     search: function (pageNumber) {
-        return host.url + "/search/si/" + pageNumber + '/' + host.keyword + host.area;
+        return host.url + "/search/si/" + pageNumber + '/' + host.keyword + '/' + host.area;
     }
 };
 
