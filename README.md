@@ -1,7 +1,7 @@
 # Yellow Pages Canada Phone Number Scraper
 ### About
 Scrape Yellow Pages Canada for phone numbers, output the list to CSV file - Script removes duplicate phone numbers.
-![Screen shot](http://i.imgur.com/h1yCp0p.png)
+![Screen shot](http://i.imgur.com/JiOEtKb.png)
 
 ### CasperJS
 First use [npm](https://nodejs.org/en/download/) to install [casperjs](http://casperjs.org/) -
