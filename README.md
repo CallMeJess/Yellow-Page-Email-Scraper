@@ -1,7 +1,8 @@
-# Yellow Page Email Scraper
+# Yellow Pages Canada Phone Number Scraper
 ### About
-Scrap Yellow Pages for emails and return them in a list -
+Scrape Yellow Pages Canada for phone numbers, output the list to CSV file -
 ![Screen shot](http://i.imgur.com/h1yCp0p.png)
+Script removes duplicate phone numbers.
 
 ### CasperJS
 First use [npm](https://nodejs.org/en/download/) to install [casperjs](http://casperjs.org/) -
@@ -16,19 +17,18 @@ Update the host{} in scraper.js -
 ```js
 var host = {
     // main connect
-    url: 'http://yellowpages.com',
+    url: 'http://yellowpages.ca',
     // areas to search
     area: [
-        '/michigan',
-        '/california',
-        '/washington',
-        '/florida',
+        'calgary',
+        'toronto',
+        'montreal'
     ],
     // business keyword
-    keyword: '/restaurant',
+    keyword: 'plumbing',
     // creates complete link
-    search: function () {
-        return host.url + host.area[build.currentLocation] + host.keyword;
+    search: function (pageNumber) {
+        return host.url + "/search/si/" + pageNumber + '/' + host.keyword + '/' + host.area;
     }
 };
 ```
