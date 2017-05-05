@@ -1,131 +1,129 @@
-// casperJS
 var casper = require('casper').create();
+casper.userAgent('Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:41.0) Gecko/20100101 Firefox/41.0');
 
-// build variables
+casper.on('error', function(msg,backtrace) {
+  this.echo("=========================");
+  this.echo("ERROR:");
+  this.echo(msg);
+  this.echo(backtrace);
+  this.echo("=========================");
+  exiterr = true;
+});
+
+casper.on('remote.message', function(msg) {
+  this.echo("remote: "+msg);
+});
+var fs = require('fs');
+
 var build = {
-    // all emails
-    emails: [],
-    // used for building
+    numbers: [],
     currentPage: 1,
     currentLocation: 0,
     proceed: true,
     links: [],
-    email: undefined
+    phone: undefined
 };
 
-// areas and keyword
 var host = {
-    // main connect
-    url: 'http://yellowpages.com',
-    // areas to search
+    url: 'http://yellowpages.ca',
     area: [
-        '/michigan',
-        '/ohio',
-        '/indiana',
+        '/calgary' // City name
     ],
-    // business keyword
-    keyword: '/electronics',
-    // creates complete link
-    search: function () {
-        return host.url + host.area[build.currentLocation] + host.keyword;
+    keyword: 'plumbing', // Desired category
+    search: function (pageNumber) {
+        return host.url + "/search/si/" + pageNumber + '/' + host.keyword + host.area;
     }
 };
 
-// data methods
 var get = {
-    // gets links to page of businesses
     links: function () {
-        // search for business links
-        var query = document.querySelectorAll('div.info h3.n a.business-name');
-        // return array of hrefs
-        return Array.prototype.map.call(query, function (e) {
+        var query = document.getElementsByClassName('listing__name--link jsListingName');
+        var rv = Array.prototype.map.call(query, function (e) {
             return e.getAttribute('href');
         });
+        return rv;
     },
-    // gets emails from a current page
-    email: function () {
-        // select email element
-        var results = document.getElementsByClassName('email-business')[0];
-        // save mailto link
-        results = results.getAttribute('href');
-        // remove mailto
-        results = results.slice(7);
-        // return email
-        return results;
+    phone: function () {
+        var results = document.getElementsByClassName('mlr__submenu__item')[0];
+        result = results.textContent.replace(/\D+/g, '');
+        return result;
     }
 };
 
-// main scraper
+var csvfile="output.csv";
+
 function scrape(page) {
-    // connects to page with casper
-    casper.start(page, function () {
-        // set the page back to 1
-        build.currentPage = 1;
-        // prints page being printed
-        this.echo('\nSCAPING: ' + page);
+    casper.thenOpen(page, function () {
+        this.echo('\nSCRAPING: ' + page);
         // gets all the links on the page
         build.links = this.evaluate(get.links);
-        // loop over all those links
         for (var i in build.links) {
             // connects to each links
             casper.thenOpen(host.url + build.links[i], function () {
-                // gets email from link
-                build.email = this.evaluate(get.email);
-                // if there is an email
-                if (build.email !== null) {
+                // gets phone from link
+                build.phone = this.evaluate(get.phone);
+                if (build.phone !== null) {
                     // get the title of the page
                     var title = this.getTitle();
-                    // print business and email
-                    this.echo('\nBUSINESS: ' + title.substr(0, title.length - 9));
-                    this.echo('EMAIL: ' + build.email);
-                    // push email to array
-                    build.emails.push(build.email);
+                    // print business and phone
+                    var bname=title//.split('-')[0];
+                    this.echo('\nBUSINESS: ' + bname);
+                    this.echo('PHONE: ' + build.phone);
+                    if (build.numbers.indexOf(build.phone) === -1) {
+	                    build.numbers.push(build.phone);
+	                    fs.write(csvfile,'"'+ bname + '","' + build.phone + '"\n','a');
+	                }
+	                else
+	                	this.echo("Skipped Duplicate Number");
                 }
             });
         }
         // opens main page again
         casper.thenOpen(page, function () {
-            // dumps emails to the screen
-            this.echo('\nSCAPED: ' + build.emails.length);
-            this.echo('DUMP: ' + build.emails.join(', '));
+            // dumps to the screen
+                this.echo('\nSCRAPED: ' + build.numbers.length);
+                this.echo('DUMP: ' + build.numbers.join(', '));
             // if a next btn exists
-            if (this.exists('a.next')) {
-                // print message
+            if (this.exists('a.loadmore')) {
                 this.echo('\nCONTINUE: Next button found');
-                // add one to the current page
                 build.currentPage = build.currentPage + 1;
-                // scape the next page
-                scrape(host.search() + '?page=' + build.currentPage);
+                this.echo('Page Number: ' + build.currentPage);
+                scrape(host.search(build.currentPage));
             } else {
-                // if no next btn print message
                 this.echo('COMPLETE: Area complete, no next button');
                 // if there's more areas go to the next one
                 if (host.area.length > 1 && build.currentLocation <= host.area.length) {
-                    // print message
                     this.echo('LOADING: Moving onto next location');
-                    // go to next location
                     build.currentLocation = build.currentLocation + 1;
-                    // scrape that location page
-                    scrape(host.search());
+                    build.currentPage=1;
+                    scrape(host.search(build.currentPage));
                 } else {
-                    // else complete process
                     this.echo('COMPLETE: All areas completed');
-                    // then kill app
                     this.exit();
                 }
-
             }
         });
     });
 }
 
-// init run
-scrape(host.search());
+var cmd_arg = casper.cli.get(0);
+
+if (fs.isFile(csvfile))
+    if (cmd_arg == "replace")
+        fs.remove(csvfile);
+    else
+        casper.die("Output csvfile already exists, run with replace option or rename the file");
+
+fs.write(csvfile, '"Business Name","Phone Number"\n', 'w');
+
+casper.start(host.url, function () {
+    // init run
+    scrape(host.search(build.currentPage));
+});
 
 // final exit
 casper.run(function () {
-    // shows all emails scraped
-    this.echo('\nSCAPED: ' + emails.length);
-    this.echo('DUMP: ' + emails.join(', ')).exit();
+    this.echo('\nSCRAPED: ' + build.numbers.length);
+    this.echo('DUMP: ' + build.numbers.join(', ')).exit();
     this.exit();
 });
